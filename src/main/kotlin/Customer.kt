@@ -7,15 +7,18 @@ open class Customer(val x: Int,
                     private val service: Int) {
     var isMuted = false
     private var mutedSteps = 0
+    var arrivalTime: Int = 0
 
-    fun getTimeSpent(arrivalTime: Int) =
-        service + if (ts > arrivalTime) {
-            ts - arrivalTime
-        } else {
-            0
-        }
+    fun getDelay() = if (ts > arrivalTime) {
+        ts - arrivalTime
+    } else {
+        0
+    }
 
-    fun getViolation(arrivalTime: Int) = if (te < arrivalTime) {
+    fun getTimeSpent() =
+        service + getDelay()
+
+    fun getViolation() = if (te < arrivalTime) {
             arrivalTime - te
         } else {
             0
