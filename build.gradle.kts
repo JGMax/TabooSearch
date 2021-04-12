@@ -11,4 +11,5 @@ repositories {
 
 dependencies {
     implementation(kotlin("stdlib"))
+    implementation(files("xchart-3.8.0/xchart-3.8.0.jar"))
 }
