@@ -1,24 +1,34 @@
+
+import Depot.depot
+import GlobalVariables.maxCapacity
 import GlobalVariables.penalty
 import kotlin.math.abs
 
-class Vehicle() {
+class Vehicle(val id: Int) {
     val list = arrayListOf<Customer>()
-    val idsArray = Array(2) { mutableListOf<Int>() }
-    val timeList = arrayListOf<Int>()
+    val coordinatesArray = Array(2) { mutableListOf<Int>() }
+    val idsList = arrayListOf<Int>()
+    val timeList = arrayListOf<Double>()
+    var violation = 0.0
+        private set
     var currentCapacity = 0
+    var currentTime = 0.0
     var effectiveness = 0.0
+        private set
         get() {
             return if (changed) {
                 changed = false
-                calcEffectiveness()
+                field = calcEffectiveness()
+                field
             } else {
                 field
             }
         }
-    private set
     private var changed = true
+    val last
+        get() = list.last()
 
-    constructor(list: ArrayList<Customer>) : this() {
+    constructor(id: Int, list: ArrayList<Customer>) : this(id) {
         list.forEach {
             this.list.add(it)
         }
@@ -27,68 +37,74 @@ class Vehicle() {
 
     fun clear() {
         list.clear()
-        idsArray[0].clear()
-        idsArray[1].clear()
+        coordinatesArray[0].clear()
+        coordinatesArray[1].clear()
+        idsList.clear()
         timeList.clear()
         effectiveness = 0.0
+        violation = 0.0
         currentCapacity = 0
     }
 
-    fun copy() : Vehicle = Vehicle(list)
+    fun copy() : Vehicle = Vehicle(id, list)
 
     fun add(customer: Customer) {
-        currentCapacity += customer.demand
-        if (list.size < 2) {
-            list.add(customer)
-            idsArray[0].add(customer.x)
-            idsArray[1].add(customer.y)
-            timeList.add(customer.arrivalTime + customer.getDelay())
-        } else {
-            list.add(list.lastIndex, customer)
-            idsArray[0].add(list.lastIndex, customer.x)
-            idsArray[1].add(list.lastIndex, customer.y)
-            timeList.add(list.lastIndex, customer.arrivalTime + customer.getDelay())
+        if (list.isNotEmpty()) {
+            currentTime += list.last().calcDistance(customer)
+            customer.arrivalTime = currentTime
+            currentTime += customer.getDelay()
         }
+        currentCapacity += customer.demand
+        list.add(customer)
+        coordinatesArray[0].add(customer.x)
+        coordinatesArray[1].add(customer.y)
+        idsList.add(customer.id)
+        timeList.add(customer.arrivalTime + customer.getDelay())
     }
 
     private fun insertInto(index: Int, value: Customer) {
         currentCapacity += value.demand
         list.add(index, value)
-        idsArray[0].add(index, value.x)
-        idsArray[1].add(index, value.y)
+        coordinatesArray[0].add(index, value.x)
+        coordinatesArray[1].add(index, value.y)
+        idsList.add(index, value.id)
         timeList.add(index, value.arrivalTime + value.getDelay())
     }
 
     private fun deleteAt(index: Int) {
         currentCapacity -= list[index].demand
         list.removeAt(index)
-        idsArray[0].removeAt(index)
-        idsArray[1].removeAt(index)
+        coordinatesArray[0].removeAt(index)
+        coordinatesArray[1].removeAt(index)
+        idsList.removeAt(index)
         timeList.removeAt(index)
     }
 
-    private fun calcViolation() : Int {
-        var violation = 0
+    private fun calcViolation() : Double {
+        violation = 0.0
         list.forEach {
             violation += it.getViolation()
         }
-        //todo capacity violation
+        violation += (currentCapacity - maxCapacity).coerceAtLeast(0)
         return violation
     }
 
     private fun sync(index: Int) {
-        idsArray[0][index] = list[index].x
-        idsArray[1][index] = list[index].y
-
+        coordinatesArray[0][index] = list[index].x
+        coordinatesArray[1][index] = list[index].y
+        idsList[index] = list[index].id
         timeList[index] = list[index].arrivalTime + list[index].getDelay()
     }
 
     private fun syncAll() {
-        idsArray[0].clear()
-        idsArray[1].clear()
+        coordinatesArray[0].clear()
+        coordinatesArray[1].clear()
+        timeList.clear()
+        idsList.clear()
         list.forEach {
-            idsArray[0].add(it.x)
-            idsArray[1].add(it.y)
+            coordinatesArray[0].add(it.x)
+            coordinatesArray[1].add(it.y)
+            idsList.add(it.id)
             timeList.add(it.arrivalTime + it.getDelay())
         }
     }
@@ -103,47 +119,107 @@ class Vehicle() {
         return effectiveness + calcViolation() * penalty
     }
 
-    fun doubleOptEffectiveness(edgeAfterIndex1: Int, edgeAfterIndex2: Int) : Double {
+    fun doubleOpt() : Double {
+        var effect = 0.0
+        list.forEachIndexed { i, _ ->
+            for (j in i..list.lastIndex) {
+                val currentEffect = effectiveness - doubleOptEffectiveness(i, j)
+                if (currentEffect > effect) {
+                    list[i].isMuted = true
+                    doubleOpt(i, j)
+                    effect = currentEffect
+                }
+            }
+        }
+        return effect
+    }
+
+    fun insertOpt() : Double {
+        var effect = 0.0
+        list.forEachIndexed { i, _ ->
+            for (j in i..list.lastIndex) {
+                val currentEffect = effectiveness - insertOptEffectiveness(i, j)
+                if (currentEffect > effect) {
+                    list[i].isMuted = true
+                    insertOpt(i, j)
+                    effect = currentEffect
+                }
+            }
+        }
+        return effect
+    }
+
+    fun swap(path: Vehicle) : Double {
+        var effect = 0.0
+        list.forEachIndexed { i, _ ->
+            for (j in path.list.indices) {
+                val currentEffect = path.effectiveness + effectiveness - swapEffectiveness(path, i, j)
+                if (currentEffect > effect) {
+                    list[i].isMuted = true
+                    swap(path, i, j)
+                    effect = currentEffect
+                }
+            }
+        }
+        return effect
+    }
+
+    fun move(path: Vehicle) : Double {
+        var effect = 0.0
+        list.forEachIndexed { i, _ ->
+            for (j in path.list.indices) {
+                val currentEffect = path.effectiveness + effectiveness - moveEffectiveness(path, i, j)
+                if (currentEffect > effect) {
+                    list[i].isMuted = true
+                    move(path, i, j)
+                    effect = currentEffect
+                }
+            }
+        }
+        return effect
+    }
+
+    private fun doubleOptEffectiveness(edgeAfterIndex1: Int, edgeAfterIndex2: Int) : Double {
         if (edgeAfterIndex1 in 0 until list.lastIndex
             && edgeAfterIndex2 in 0 until list.lastIndex
             && abs(edgeAfterIndex1 - edgeAfterIndex2) in 2 until list.size) {
-            val newPath = Vehicle(list)
+            val newPath = copy()
             newPath.doubleOpt(edgeAfterIndex1, edgeAfterIndex2)
             return newPath.effectiveness
         }
-        return 0.0
+        return effectiveness
     }
 
-    fun insertOptEffectiveness(index: Int, afterIndexInsert: Int) : Double {
+    private fun insertOptEffectiveness(index: Int, afterIndexInsert: Int) : Double {
         if (index in 1 until list.lastIndex && afterIndexInsert in 0 until list.lastIndex) {
-            val newPath = Vehicle(list)
+            val newPath = copy()
             newPath.insertOpt(index, afterIndexInsert)
             return newPath.effectiveness
         }
-        return 0.0
+        return effectiveness
     }
 
-    fun swapEffectiveness(path: Vehicle, myIndex: Int, pathIndex: Int) : Double {
+    private fun swapEffectiveness(path: Vehicle, myIndex: Int, pathIndex: Int) : Double {
         if (myIndex in 1 until list.lastIndex && pathIndex in 1 until path.list.lastIndex) {
-            val newMyPath = Vehicle(list)
-            val newPath = Vehicle(path.list)
+            val newMyPath = copy()
+            val newPath = path.copy()
             newMyPath.swap(newPath, myIndex, pathIndex)
             return newPath.effectiveness + newMyPath.effectiveness
         }
-        return 0.0
+        return effectiveness + path.effectiveness
     }
 
-    fun moveEffectiveness(path: Vehicle, indexFrom: Int, indexTo: Int) : Double {
+    private fun moveEffectiveness(path: Vehicle, indexFrom: Int, indexTo: Int) : Double {
         if (indexFrom in 1 until list.lastIndex && indexTo in 1 until path.list.lastIndex) {
-            val newMyPath = Vehicle(list)
-            val newPath = Vehicle(path.list)
+            val newMyPath = copy()
+            val newPath = path.copy()
             newMyPath.move(newPath, indexFrom, indexTo)
             return newPath.effectiveness + newMyPath.effectiveness
         }
-        return 0.0
+        return effectiveness + path.effectiveness
     }
 
-    fun doubleOpt(edgeAfterIndex1: Int, edgeAfterIndex2: Int) {
+    private fun doubleOpt(edgeAfterIndex1: Int, edgeAfterIndex2: Int) {
         if (edgeAfterIndex1 in 0 until list.lastIndex
             && edgeAfterIndex2 in 0 until list.lastIndex
             && abs(edgeAfterIndex1 - edgeAfterIndex2) in 2 until list.size) {
@@ -159,7 +235,7 @@ class Vehicle() {
         }
     }
 
-    fun insertOpt(index: Int, afterIndexInsert: Int) {
+    private fun insertOpt(index: Int, afterIndexInsert: Int) {
         if (index in 1 until list.lastIndex && afterIndexInsert in 0 until list.lastIndex) {
             changed = true
             insertInto(afterIndexInsert + 1, list[index])
@@ -167,7 +243,7 @@ class Vehicle() {
         }
     }
 
-    fun swap(path: Vehicle, myIndex: Int, pathIndex: Int) {
+    private fun swap(path: Vehicle, myIndex: Int, pathIndex: Int) {
         if (myIndex in 1 until list.lastIndex && pathIndex in 1 until path.list.lastIndex) {
             changed = true
 
@@ -183,16 +259,28 @@ class Vehicle() {
         }
     }
 
-    fun move(path: Vehicle, indexFrom: Int, indexTo: Int) {
-        if (indexFrom in 1 until list.lastIndex && indexTo in 1 until path.list.lastIndex) {
-            changed = true
+    private fun move(path: Vehicle, indexFrom: Int, indexTo: Int) {
+        if (indexFrom in 1 until list.lastIndex) {
+            if (path.isEmpty()) {
+                changed = true
 
-            currentCapacity -= list[indexFrom].demand
+                currentCapacity -= list[indexFrom].demand
 
-            path.insertInto(indexTo, list[indexFrom])
-            deleteAt(indexFrom)
+                path.add(list[indexFrom])
+                path.add(depot)
+                deleteAt(indexFrom)
+            } else if (indexTo in 1 until path.list.lastIndex) {
+                changed = true
+
+                currentCapacity -= list[indexFrom].demand
+
+                path.insertInto(indexTo, list[indexFrom])
+                deleteAt(indexFrom)
+            }
         }
     }
 
     fun isEmpty() = effectiveness == 0.0
+
+    fun isNotEmpty() = !isEmpty()
 }

@@ -1,10 +1,18 @@
 object Customers {
     private val customers = arrayListOf<Customer>()
-    val muted = arrayListOf<Customer>()
+    private val muted = arrayListOf<Customer>()
     val available = arrayListOf<Customer>()
 
     fun addCustomer(customer: Customer) {
         customers.add(customer)
+    }
+
+    fun deleteAvailable(index: Int) {
+        available.removeAt(index)
+    }
+
+    fun deleteAvailable(customer: Customer) {
+        available.remove(customer)
     }
 
     fun updateData() {

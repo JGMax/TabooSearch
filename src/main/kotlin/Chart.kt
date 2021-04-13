@@ -17,7 +17,7 @@ object Chart {
         displayChart()
     }
 
-    fun updateData(name: String, dataArray: Array<MutableList<Double>>) {
+    fun updateData(name: String, dataArray: Array<MutableList<Int>>) {
         SwingUtilities.invokeLater {
             chart.updateXYSeries(name, dataArray[0], dataArray[1], null)
             swingWrapper.repaintChart()
@@ -27,7 +27,7 @@ object Chart {
     fun containsSeries(name: String) : Boolean = chart.seriesMap.containsKey(name)
 
     fun addSeries(name: String,
-                  dataArray: Array<MutableList<Double>>,
+                  dataArray: Array<MutableList<Int>>,
                   color: Color? = null,
                   width: Float = 0.0f) {
         val series = chart.addSeries(name, dataArray[0], dataArray[1])
