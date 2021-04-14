@@ -31,4 +31,4 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
       - name: Run
-        run: ./gradlew bootRun --args = "inputFile = src/main/resources/input.txt"
+        run: ./gradlew run --args = "inputFile = src/main/resources/input.txt"
