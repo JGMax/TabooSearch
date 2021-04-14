@@ -3,10 +3,11 @@ import Depot.depot
 import GlobalVariables.maxCapacity
 import GlobalVariables.penalty
 import GlobalVariables.vehiclesNumber
+import java.awt.Color
 
 object Vehicles {
     var bestSolution = arrayListOf<Vehicle>()
-    var bestEffectiveness = 0.0
+    var bestTime = 0.0
     var bestUsedVehicles = 0
     private val vehicles = arrayListOf<Vehicle>()
 
@@ -19,75 +20,58 @@ object Vehicles {
     }
 
     private fun search() {
-        var improved = true
-        while (improved) {
-            //improved = false
-            val seq = arrayListOf(0, 1, 2, 3)
-            seq.shuffle()
-            seq@for (i in seq) {
-                when (i) {
-                    0 -> {
-                        for (vehicle in vehicles) {
-                            if(vehicle.isNotEmpty()) {
-                                val effect = vehicle.doubleOpt()
-                                if (effect > 0) {
-                                    println("doubleOpt $effect")
-                                    //improved = true
-                                    break@seq
-                                }
-                            }
-                        }
-                    }
-                    1 -> {
-                        for (vehicle in vehicles) {
-                            if(vehicle.isNotEmpty()) {
-                                val effect = vehicle.insertOpt()
-                                if (effect > 0) {
-                                    println("insertOpt $effect")
-                                    //improved = true
-                                    break@seq
-                                }
-                            }
-                        }
-                    }
-                    2 -> {
-                        for (j in 0 until vehicles.lastIndex) {
-                            if(vehicles[j].isNotEmpty()) {
-                                for (k in j + 1..vehicles.lastIndex) {
-                                    if (vehicles[k].isNotEmpty()) {
-                                        val effect = vehicles[j].swap(vehicles[k])
-                                        if (effect > 0) {
-                                            println("swap $effect")
-                                            //improved = true
-                                            break@seq
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    3 -> {
-                        for (vehicle in vehicles) {
-                            if(vehicle.isNotEmpty()) {
-                                for (vehicle1 in vehicles) {
-                                    if (vehicle.id != vehicle1.id) {
-                                        val effect = vehicle.move(vehicle1)
-                                        // todo получить лучший эффект из всех доступных
-                                        if (effect > 0) {
-                                            println("move $effect")
-                                            //improved = true
-                                            break@seq
-                                        }
-                                    }
-                                }
-                            }
+        val startTime = System.currentTimeMillis()
+        while (System.currentTimeMillis() - startTime <= 300000) {
+            bestMove()
+            updateData()
+        }
+    }
+
+    private fun bestMove() {
+        var bestEffect = 0.0
+        lateinit var bestVehicle1: Vehicle
+        lateinit var bestVehicle2: Vehicle
+        var index1 = -1
+        var index2 = -1
+
+        val availableVehicles = vehicles.copy()
+        availableVehicles.removeIf { it.isEmpty() }
+        val emptyVehicle = vehicles.firstOrNull { it.isEmpty() }
+        if (emptyVehicle != null) {
+            availableVehicles.add(emptyVehicle)
+        }
+
+        for (vehicle1 in availableVehicles) {
+            if (vehicle1.isNotEmpty()) {
+                for (vehicle2 in availableVehicles) {
+                    if (vehicle1.id != vehicle2.id) {
+                        val effect = vehicle1.bestMove(vehicle2)
+                        if ((bestEffect == 0.0 || effect > bestEffect) && effect != 0.0) {
+                            bestEffect = effect
+                            bestVehicle1 = vehicle1
+                            bestVehicle2 = vehicle2
+                            index1 = vehicle1.bestIndexes[0]
+                            index2 = vehicle1.bestIndexes[1]
                         }
                     }
                 }
             }
-            updateData()
-            Customers.updateData()
         }
+
+        bestVehicle1.apply {
+            val customer = list[index1]
+            move(bestVehicle2, index1, index2)
+            customer.isMuted = true
+        }
+    }
+
+    private fun showBest() {
+        val bestCoordinates = Array(2) { mutableListOf<Int>() }
+        bestSolution.forEach {
+            bestCoordinates[0].addAll(it.coordinatesArray[0])
+            bestCoordinates[1].addAll(it.coordinatesArray[1])
+        }
+        Chart.updateData("Best", bestCoordinates)
     }
 
     private fun init() {
@@ -97,6 +81,7 @@ object Vehicles {
             vehicles.add(vehicle)
             Chart.addSeries("$i", vehicle.coordinatesArray)
         }
+        Chart.addSeries("Best", vehicles[0].coordinatesArray, Color.BLUE)
     }
 
     private fun initialSolution() {
@@ -112,13 +97,15 @@ object Vehicles {
                 i++
             }
         }
+        vehicles[i].add(depot)
     }
 
     private fun updateData() {
-        val effectiveness = calcEffectiveness()
+        val effectiveness = calcTime()
         val usedVehicles = countUsedVehicles()
         val violation = calcViolation()
 
+        Customers.updateData()
         updateBestValues(effectiveness)
         showData(effectiveness, usedVehicles, violation)
         penaltyChange(violation)
@@ -126,17 +113,23 @@ object Vehicles {
 
     private fun penaltyChange(violation: Double) {
         if (violation > 0) {
-            penalty *= penalty
+            if (penalty * 2 < Long.MAX_VALUE && penalty * 2 > 0) {
+                penalty *= 2
+            } else {
+                penalty = Long.MAX_VALUE
+            }
         } else {
             penalty = PENALTY_START_VALUE
         }
     }
 
     private fun updateBestValues(currentEffectiveness: Double) {
-        if (bestEffectiveness == 0.0 || bestEffectiveness > currentEffectiveness) {
+        if (bestTime == 0.0 || bestTime > currentEffectiveness) {
             bestUsedVehicles = countUsedVehicles()
-            bestEffectiveness = currentEffectiveness
+            bestTime = currentEffectiveness
             bestSolution = vehicles.copy()
+            DataManager.writeData(bestSolution, bestTime)
+            showBest()
         }
     }
 
@@ -150,23 +143,24 @@ object Vehicles {
         return violation
     }
 
-    private fun calcEffectiveness() : Double {
-        var effectiveness = 0.0
+    private fun calcTime() : Double {
+        var time = 0.0
         vehicles.forEach {
             if (it.isNotEmpty()) {
-                effectiveness += it.effectiveness
+                time += it.time
             }
         }
-        return effectiveness
+        return time
     }
 
     private fun countUsedVehicles() = vehicles.count { it.isNotEmpty() }
 
     private fun showData(currentEffectiveness: Double, usedVehicles: Int, violation: Double) {
         visualize()
-        println("Best effectiveness{$bestUsedVehicles}: $bestEffectiveness " +
+        println("Best effectiveness{$bestUsedVehicles}: $bestTime " +
                 "Current effectiveness{$usedVehicles}: $currentEffectiveness " +
-                "Violation: $violation Penalty: $penalty")
+                "Violation: $violation Penalty: $penalty " +
+                "Muted customers: ${Customers.mutedSize()}")
     }
 
     private fun visualize() {

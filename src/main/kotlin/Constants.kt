@@ -1,4 +1,4 @@
 object Constants {
-    const val SHORT_MEMORY_DURATION = 10
-    const val PENALTY_START_VALUE = 2
+    var SHORT_MEMORY_DURATION = 20
+    var PENALTY_START_VALUE : Long = 4
 }

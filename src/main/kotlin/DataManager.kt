@@ -2,7 +2,6 @@ import GlobalVariables.maxCapacity
 import GlobalVariables.vehiclesNumber
 import java.io.File
 
-
 object DataManager {
     lateinit var inputFile: String
     lateinit var outputFile: String
@@ -12,7 +11,7 @@ object DataManager {
         lines.forEachIndexed { i, s ->
             val dataList = s.split(delimiters).map {
                 if (it.isNotEmpty()) {
-                    it.toInt()
+                    it.toDouble().toInt()
                 } else { -1 }
             }.toMutableList()
             dataList.removeAll { it == -1 }
@@ -34,12 +33,17 @@ object DataManager {
         Customers.updateData()
     }
 
-    fun writeData(data: Array<Int>, effectiveness: Double = -1.0) {
+    fun writeData(vehicles: ArrayList<Vehicle>, effectiveness: Double = -1.0) {
         File(outputFile).printWriter().use {
             if (effectiveness != -1.0) {
                 it.println("Effectiveness: $effectiveness")
             }
-            data.forEach { id -> it.println(id) }
+            vehicles.forEach { v ->
+                if (v.isNotEmpty()) {
+                    v.idsList.forEachIndexed { i, id -> it.print("$id ${v.timeList[i].round(2)} ") }
+                    it.println()
+                }
+            }
         }
     }
 }

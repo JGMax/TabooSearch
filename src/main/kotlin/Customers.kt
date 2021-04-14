@@ -7,9 +7,7 @@ object Customers {
         customers.add(customer)
     }
 
-    fun deleteAvailable(index: Int) {
-        available.removeAt(index)
-    }
+    fun mutedSize() = muted.size
 
     fun deleteAvailable(customer: Customer) {
         available.remove(customer)
