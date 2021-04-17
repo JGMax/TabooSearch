@@ -1,13 +1,13 @@
-import Constants.SHORT_MEMORY_DURATION
 
 open class Customer(val id: Int,
                     val x: Int,
                     val y: Int,
                     val demand: Int,
-                    private val ts: Int, private val te: Int,
+                    val ts: Int, private val te: Int,
                     private val service: Int) {
     var isMuted = false
     private var mutedSteps = 0
+    var maxMutedSteps = 0
     var arrivalTime = 0.0
 
     constructor(data: List<Int>) :
@@ -37,7 +37,7 @@ open class Customer(val id: Int,
     fun increaseMutedStep() {
         if (isMuted) {
             mutedSteps++
-            if (mutedSteps > SHORT_MEMORY_DURATION) {
+            if (mutedSteps > maxMutedSteps) {
                 isMuted = false
                 mutedSteps = 0
             }
