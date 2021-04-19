@@ -160,12 +160,6 @@ object Vehicles {
         updateTimeData()
         penaltyChange(violation)
         showData(effectiveness, usedVehicles, violation)
-        if (bestTime < 828) {
-            bestSolution.forEach {
-                println("${it.id} Time: ${it.time} Violation: ${it.violation}")
-            }
-            exitProcess(0)
-        }
     }
 
     private fun penaltyChange(violation: Double) {
@@ -181,13 +175,11 @@ object Vehicles {
     }
 
     private fun updateBestValues(currentEffectiveness: Double, violation: Double) {
-        if ((bestTime == 0.0 || bestTime > currentEffectiveness)) {
+        if (violation == 0.0 && (bestTime == 0.0 || bestTime > currentEffectiveness)) {
             bestUsedVehicles = countUsedVehicles()
             bestTime = currentEffectiveness
             bestSolution = vehicles.copy()
-            if (violation == 0.0) {
-                DataManager.writeData(bestSolution, bestTime)
-            }
+            DataManager.writeData(bestSolution, bestTime)
             showBest()
         }
     }
