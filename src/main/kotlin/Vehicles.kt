@@ -3,12 +3,12 @@ import Constants.MIN_MEMORY_DURATION
 import Constants.PENALTY_INCREASE
 import Constants.PENALTY_START_VALUE
 import Constants.VISUALIZE
-import Depot.depot
 import GlobalVariables.maxCapacity
 import GlobalVariables.penalty
 import GlobalVariables.vehiclesNumber
 import java.awt.Color
 import kotlin.random.Random
+import kotlin.system.exitProcess
 
 object Vehicles {
     var bestSolution = arrayListOf<Vehicle>()
@@ -38,7 +38,7 @@ object Vehicles {
         if (VISUALIZE) {
             step += 1
             if (step > 500) {
-                if (currentTimeWithViolation[0].isNotEmpty()) {
+                if (currentTimeWithViolation[0].isNotEmpty() && step - currentTimeWithViolation[0][0] > 500) {
                     currentTimeWithViolation[0].removeAt(0)
                     currentTimeWithViolation[1].removeAt(0)
                 }
@@ -111,7 +111,7 @@ object Vehicles {
     private fun init() {
         for (i in 0 until vehiclesNumber) {
             val vehicle = Vehicle(i)
-            vehicle.add(depot)
+            vehicle.add(Depot.clone())
             vehicles.add(vehicle)
         }
         visualizationInit()
@@ -146,7 +146,7 @@ object Vehicles {
 
     private fun closePath() {
         vehicles.forEach {
-            it.add(depot)
+            it.add(Depot.clone())
         }
     }
 
@@ -156,10 +156,16 @@ object Vehicles {
         val violation = calcViolation()
 
         Customers.updateData()
-        updateBestValues(effectiveness)
+        updateBestValues(effectiveness, violation)
         updateTimeData()
         penaltyChange(violation)
         showData(effectiveness, usedVehicles, violation)
+        if (bestTime < 828) {
+            bestSolution.forEach {
+                println("${it.id} Time: ${it.time} Violation: ${it.violation}")
+            }
+            exitProcess(0)
+        }
     }
 
     private fun penaltyChange(violation: Double) {
@@ -174,12 +180,14 @@ object Vehicles {
         }
     }
 
-    private fun updateBestValues(currentEffectiveness: Double) {
-        if (bestTime == 0.0 || bestTime > currentEffectiveness) {
+    private fun updateBestValues(currentEffectiveness: Double, violation: Double) {
+        if ((bestTime == 0.0 || bestTime > currentEffectiveness)) {
             bestUsedVehicles = countUsedVehicles()
             bestTime = currentEffectiveness
             bestSolution = vehicles.copy()
-            DataManager.writeData(bestSolution, bestTime)
+            if (violation == 0.0) {
+                DataManager.writeData(bestSolution, bestTime)
+            }
             showBest()
         }
     }

@@ -1,5 +1,5 @@
 object Depot {
-    lateinit var depot: Customer
+    private lateinit var depot: Customer
 
     fun set(customer: Customer) {
         depot = customer
@@ -9,4 +9,6 @@ object Depot {
             ts: Int, te: Int, service: Int) {
         depot = Customer(id, x, y, demand, ts, te, service)
     }
+
+    fun clone() = Customer(depot)
 }

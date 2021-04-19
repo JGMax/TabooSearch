@@ -19,6 +19,8 @@ open class Customer(val id: Int,
                 , data[5]
                 , data[6])
 
+    constructor(c : Customer) : this(c.id, c.x, c.y, c.demand, c.ts, c.te, c.service)
+
     fun getDelay() = if (ts > arrivalTime) {
         ts - arrivalTime
     } else {

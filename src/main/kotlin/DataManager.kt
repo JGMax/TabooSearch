@@ -1,3 +1,4 @@
+
 import GlobalVariables.maxCapacity
 import GlobalVariables.vehiclesNumber
 import java.io.File
@@ -46,4 +47,38 @@ object DataManager {
             }
         }
     }
+
+    fun validData(file: String) {
+        val lines = File(file).readLines()
+
+        var sum = 0.0
+        lines.forEachIndexed { index, s ->
+            val vehicle = Vehicle(index)
+            s.split(" ").forEachIndexed { i, num ->
+                if (i % 2 == 0) {
+                    if (num.toInt() == 0) {
+                        vehicle.list.add(Depot.clone())
+                    } else {
+                        val c = Customers.customers.find { it.id == num.toInt() }
+                        if (c != null) {
+                            vehicle.add(c)
+                        }
+                    }
+                }
+            }
+            vehicle.list.forEach {
+                print("${it.id} ")
+            }
+            println()
+            vehicle.list.forEach {
+                print("${it.getViolation()} ")
+            }
+            println()
+            println("{${vehicle.id}}Violation ${vehicle.violation}")
+            println("{${vehicle.id}}Time ${vehicle.time}")
+            sum += vehicle.time
+        }
+        println("Sum of times: $sum")
+    }
+
 }

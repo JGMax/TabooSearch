@@ -4,4 +4,5 @@ fun main() {
     DataManager.outputFile = "src/main/resources/output.txt"
     DataManager.readData(" ")
     Vehicles.run()
+    //DataManager.validData("validate.txt")
 }

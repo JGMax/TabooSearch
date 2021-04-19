@@ -1,5 +1,5 @@
 object Customers {
-    private val customers = arrayListOf<Customer>()
+    val customers = arrayListOf<Customer>()
     private val muted = arrayListOf<Customer>()
     val available = arrayListOf<Customer>()
 

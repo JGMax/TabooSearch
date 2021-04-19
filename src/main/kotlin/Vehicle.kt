@@ -1,5 +1,4 @@
 
-import Depot.depot
 import GlobalVariables.maxCapacity
 import GlobalVariables.penalty
 
@@ -11,13 +10,13 @@ class Vehicle(val id: Int) {
         get() = syncIds()
     val timeList
         get() = syncTime()
-    var violation = 0.0
-        private set
-    var currentCapacity = 0
+    val violation
+        get() = calcViolation()
+    val currentCapacity
+        get() = calcCapacity()
     var currentTime = 0.0
-    var time = 0.0
+    val time
         get() = calcTime()
-        private set
 
     val last
         get() = list.last()
@@ -75,9 +74,6 @@ class Vehicle(val id: Int) {
 
     fun clear() {
         list.clear()
-        time = 0.0
-        violation = 0.0
-        currentCapacity = 0
     }
 
     fun copy() : Vehicle = Vehicle(id, list)
@@ -88,13 +84,10 @@ class Vehicle(val id: Int) {
         }
         customer.arrivalTime = currentTime
         currentTime += customer.getTimeSpent()
-
-        currentCapacity += customer.demand
         list.add(customer)
     }
 
     private fun insertInto(index: Int, value: Customer) {
-        currentCapacity += value.demand
         list.add(index, value)
         recalculateCurrentTime()
     }
@@ -113,15 +106,25 @@ class Vehicle(val id: Int) {
     }
 
     private fun deleteAt(index: Int) {
-        currentCapacity -= list[index].demand
         list.removeAt(index)
         recalculateCurrentTime()
     }
 
+    private fun calcCapacity() : Int {
+        var capacity = 0
+        list.forEach {
+            capacity += it.demand
+        }
+        return capacity
+    }
+
     private fun calcViolation() : Double {
-        violation = 0.0
+        recalculateCurrentTime()
+        var violation = 0.0
+        var currentCapacity = 0
         list.forEach {
             violation += it.getViolation()
+            currentCapacity += it.demand
         }
         violation += (currentCapacity - maxCapacity).coerceAtLeast(0)
         return violation
@@ -136,7 +139,7 @@ class Vehicle(val id: Int) {
             }
         }
 
-        return time + calcViolation() * penalty
+        return time + violation * penalty
     }
 
     fun improvePosition() : Double {
@@ -199,8 +202,6 @@ class Vehicle(val id: Int) {
         if (!list[indexFrom].isMuted) {
             if (indexFrom in 1 until list.lastIndex) {
                 if (indexTo in 1..path.list.lastIndex) {
-                    currentCapacity -= list[indexFrom].demand
-
                     path.insertInto(indexTo, list[indexFrom])
                     deleteAt(indexFrom)
                     return true
