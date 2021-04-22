@@ -52,6 +52,7 @@ object DataManager {
         val lines = File(file).readLines()
 
         var sum = 0.0
+        var isValid = true
         lines.forEachIndexed { index, s ->
             val vehicle = Vehicle(index)
             s.split(" ").forEachIndexed { i, num ->
@@ -66,11 +67,15 @@ object DataManager {
                     }
                 }
             }
+
             vehicle.list.forEach {
                 print("${it.id} ")
             }
             println()
             vehicle.list.forEach {
+                if (it.getViolation() > 0) {
+                    isValid = false
+                }
                 print("${it.getViolation()} ")
             }
             println()
@@ -79,6 +84,7 @@ object DataManager {
             sum += vehicle.time
         }
         println("Sum of times: $sum")
+        println("Validate: $isValid")
     }
 
 }
